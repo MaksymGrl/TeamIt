@@ -1,0 +1,212 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Messenger Page</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background: url("background.png") repeat center center fixed;
+            background-size: 50vh;
+        }
+        .conversation-list {
+            height: 100vh;
+            overflow-y: auto;
+            background-color: #f8f9fa; 
+        }
+
+        .conversation-item {
+            cursor: pointer;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .conversation-item:hover {
+            background-color: #f1f1f1;
+        }
+
+        .chat-window {
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            background-color: rgba(238, 238, 238, 0.85); 
+            border-left: 1px solid #ddd;
+            padding-left: 0;    
+            padding-right: 0; 
+        }
+
+        .chat-header {
+            background-color: #f8f9fa;
+            padding-left: 0;    
+            padding-right: 0; 
+            padding-top: 10px;
+            padding-bottom: 10px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .message-item {
+            display: flex;
+            margin-bottom: 15px;
+        }
+
+        /* Style for incoming messages (other users) */
+        .message-item.received {
+            justify-content: flex-start;
+        }
+
+        /* Style for outgoing messages (current user) */
+        .message-item.sent {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 60%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            position: relative;
+            word-wrap: break-word;
+            background-color: #e9ecef;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .message-content.sent {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .message-content::after {
+            content: '';
+            position: absolute;
+            top: 10px;
+            width: 0;
+            height: 0;
+        }
+
+        .message-content.received::after {
+            left: -10px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent #e9ecef transparent transparent;
+        }
+
+        .message-content.sent::after {
+            right: -10px;
+            border-width: 10px;
+            border-style: solid;
+            border-color: transparent transparent transparent #007bff;
+        }
+
+        .chat-input {
+            position: sticky;
+            bottom: 0;
+            padding: 15px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid">
+    <div class="row">
+        <!-- Left Sidebar: Conversation List -->
+        <div class="col-md-2 conversation-list bg-light d-flex flex-column">
+            <h5 class="p-3">@Model.Item2.DisplayName</h5>
+            <h5 class="p-3">Conversations</h5>
+
+            <div class="flex-grow-1">
+                @foreach (var item in Model.Item1)
+                {
+                    var conversation = item.Conversation;
+                    var lastMessage = item.LastMessage;
+                    <div class="conversation-item" onclick="loadConversation('@Url.Action("Details", "Conversations", new { id = conversation.Id })')">
+                        @if (conversation != null && !conversation?.IsGroup && conversation?.UserConversations != null && conversation?.UserConversations.Count == 2)
+                        {
+                            ICollection<UserConversation>? userConversations = conversation?.UserConversations;
+                            var otherUser = userConversations?.FirstOrDefault(uc => uc.UserId != Model.Item2.Id)?.User;
+                            if (otherUser != null)
+                            {
+                                <strong id="displayName">@otherUser.DisplayName</strong>
+                            }
+                            else
+                            {
+                                <strong id="displayName">Unknown User</strong> <!-- Fallback if otherUser is null -->
+                            }
+                        }
+                        else
+                        {
+                            <strong id="displayName">@conversation?.Title</strong><br>
+                        }
+                        <br>
+                        <small id="lastMessagePreview">@lastMessage?.Content</small> <!-- Last message preview -->
+                    </div>
+                }
+            </div>
+
+            <!-- Button to trigger modal -->
+            <div class="p-3">
+                <button type="button" class="btn btn-primary btn-block" data-bs-toggle="modal" data-bs-target="#startConversationModal">
+                    New Conversation
+                </button>
+            </div>
+        </div>
+
+        <!-- Modal for starting a new conversation -->
+        <div class="modal fade" id="startConversationModal" tabindex="-1" aria-labelledby="startConversationModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="startConversationModalLabel">Start New Conversation</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- ASP.NET form to post data to a specific action -->
+                        <form asp-action="Create" asp-controller="Conversations" method="post">
+                            <div class="mb-3">
+                                <label for="phoneNumber" class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" id="phoneNumber" name="PhoneNumber" placeholder="Enter phone number" required>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                <button type="submit" class="btn btn-primary">Start Conversation</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Main Chat Window -->
+        <div class="col-md-10 chat-window" id="chatWindow">
+            <div class="chat-header p-3" id="chatHeaderName" hidden>
+                <h5 id="chatHeaderNameText">Test</h5>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Messages will be loaded here dynamically -->
+            </div>
+        </div>
+    </div>
+</div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.2/signalr.min.js"></script>
+
+    <script>
+        function loadConversation(url) {
+            document.getElementById('chatHeaderNameText').textContent = document.getElementById('displayName').textContent;
+            document.getElementById('chatHeaderName').hidden = false;
+            $.get(url, function (data) {
+                // Replace the content of the chat window with the new conversation data
+                $('#chatMessages').html(data);
+            });
+        }
+    </script>
+
+</body>
+</html>

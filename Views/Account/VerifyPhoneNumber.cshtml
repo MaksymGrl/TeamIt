@@ -1,0 +1,8 @@
+<form asp-action="VerifyPhoneNumber" method="post">
+    <input type="hidden" name="PhoneNumber" value="@ViewBag.PhoneNumber" />
+    <div class="form-group">
+        <label for="VerificationCode">Enter Verification Code</label>
+        <input type="text" name="VerificationCode" class="form-control" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Verify</button>
+</form>

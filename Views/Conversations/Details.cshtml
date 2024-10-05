@@ -1,0 +1,45 @@
+@model TeamIt.Models.Conversation
+
+<h2>Conversation: @Model.Title</h2>
+
+<div class="card">
+    <div class="card-header">
+        Messages
+    </div>
+    <div class="card-body">
+        @if (Model.Messages.Any())
+        {
+            <ul class="list-group" id="messageContainer">
+                @foreach (var message in Model.Messages.OrderBy(m => m.Timestamp))
+                {
+                    <li class="list-group-item">
+                        <strong>@message.Sender.UserName</strong> (@message.Timestamp.ToString("g")):
+                        <p>@message.Content</p>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p id="noMessagesText">No messages yet. Start the conversation!</p> <!-- Added id for initial message text -->
+        }
+    </div>
+</div>
+
+<hr />
+
+<h4>Send a new message</h4>
+<form id="messageForm" asp-action="SendMessage" method="post"> <!-- Corrected form ID -->
+    <input type="hidden" name="conversationId" value="@Model.Id" />
+    
+    <div class="form-group">
+        <textarea id="messageInput" name="messageContent" class="form-control" placeholder="Type your message..." required></textarea> <!-- Added id to textarea -->
+    </div>
+    
+    <button type="submit" class="btn btn-primary mt-2">Send</button>
+</form>
+
+<a href="@Url.Action("Index", "Conversations")" class="btn btn-secondary mt-3">Back to Conversations</a>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.2/signalr.min.js"></script>
+<script src="js/details.js"></script>

@@ -1,0 +1,106 @@
+@model TeamIt.Models.Conversation
+
+<div>
+    <div class="chat-messages" id="messageContainer">
+        @if (Model.Messages.Any())
+        {
+            @foreach (var message in Model.Messages.OrderBy(m => m.Timestamp))
+            {
+                <div class="message-item @(message.Sender.Id == ViewBag.CurrentUserId ? "sent" : "received")">
+                    <div class="message-content @(message.Sender.Id == ViewBag.CurrentUserId ? "sent" : "received")">
+                        @message.Content
+                        <br>
+                        <small class="text-muted">@message.Timestamp.ToString("HH:mm")</small> <!-- Display timestamp here -->
+                    </div>
+                </div>
+            }
+        }
+        else
+        {
+            <p id="noMessagesText">No messages yet. Start the conversation!</p> <!-- Added id for initial message text -->
+        }
+    </div>
+
+    <div class="chat-input">
+        <form id="messageForm" asp-action="SendMessage" method="post">
+            <input type="hidden" name="conversationId" value="@Model.Id" />
+            <div class="input-group">
+                <input type="text" id="messageInput" name="messageContent" class="form-control" placeholder="Type a message..." required />
+                <div class="input-group-append">
+                    <button type="submit" class="btn btn-primary">Send</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+    <!-- SignalR Script Integration -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/6.0.2/signalr.min.js"></script>
+    <script>
+        const conversationId = "@Model.Id"; // Get the conversation ID from the model
+        // Connect to the SignalR hub
+        const connection = new signalR.HubConnectionBuilder().withUrl("/chathub").build();
+        // Function to add a message to the UI
+        function addMessage(user, message, timestamp) {
+            const messageContainer = document.getElementById("messageContainer");
+            const noMessagesText = document.getElementById("noMessagesText");
+
+            if (noMessagesText) {
+                noMessagesText.remove();
+            }
+
+            // Create a new message item
+            const div = document.createElement("div");
+            div.classList.add("message-item", user === "@ViewBag.CurrentUserId" ? "sent" : "received");
+
+            div.innerHTML = `
+                <div class="message-content ${user === "@ViewBag.CurrentUserId" ? 'sent' : 'received'}">
+                    ${message}
+                    <br>
+                    <small class="text-muted">${timestamp}</small>
+                </div>
+            `;
+
+            // Append the new message to the message container
+            messageContainer.appendChild(div);
+
+            // Scroll to the bottom to see the latest message
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+            document.getElementById("lastMessagePreview").textContent = message;
+        }
+
+        // Receive message from SignalR and add it to the message list
+        connection.on("ReceiveMessage", function (user, message, timestamp) {
+            addMessage(user, message, timestamp);
+        });
+
+        connection.start().then(function () {
+            console.log("SignalR connected.");
+
+            // Join the conversation group after connection is established
+            connection.invoke("JoinConversationGroup", conversationId).catch(function (err) {
+                return console.error(err.toString());
+            });
+        }).catch(function (err) {
+            return console.error(err.toString());
+        });
+
+        document.getElementById("messageForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+
+            const form = e.target;
+            const formData = new FormData(form);
+
+            fetch(form.action, {
+                method: form.method,
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('messageInput').value = '';
+                } else {
+                    console.error("Message could not be sent");
+                }
+            })
+            .catch(error => console.error('Error:', error));
+        });
+    </script>
